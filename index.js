@@ -2,19 +2,52 @@ var express = require('express');
 var httpreq = require('httpreq');
 var fs = require('fs');
 var app = express();
+var watson = require('watson-developer-cloud');
+var config = require('./config');
+
+var recordingsDir = '/recordings/';
 
 var recordingCallback;
+
+function runTranscript(uniqueRef) {
+  var path = __dirname + recordingsDir + uniqueRef;
+  console.log("Sending " + path+ " to watson");
+
+  var speech_to_text = watson.speech_to_text({
+    username: config.username,
+    password: config.password,
+    version: "v1"
+  });
+
+  var params = {
+    audio: fs.createReadStream(path),
+    content_type: 'audio/wav',
+    timestamps: true,
+    word_alternatives: 0.9,
+    model: 'en-UK_NarrowbandModel'
+  };
+
+  speech_to_text.recognize(params, function (err, transcript) {
+    if (err) {
+      console.error(err);
+    }
+    else {
+      console.log(transcript.results[transcript.result_index].alternatives[0].transcript);
+    }
+  });
+}
 
 function saveRecording(recordingUrl, uniqueRef) {
   httpreq.get(recordingUrl, {binary: true}, function (err, dlres) {
     if (err) {
       console.log(err);
     } else {
-      fs.writeFile(__dirname + '/recordings/' + uniqueRef, dlres.body, function (err) {
+      fs.writeFile(__dirname + recordingsDir + uniqueRef, dlres.body, function (err) {
         if(err)
           console.error("error writing " + uniqueRef + " file");
         else
           console.log("stored recording at " + uniqueRef);
+          runTranscript(uniqueRef);
       });
     }
     clearInterval(recordingCallback);
