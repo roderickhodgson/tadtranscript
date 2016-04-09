@@ -7,8 +7,6 @@ var config = require('./config');
 
 var recordingsDir = '/recordings/';
 
-var recordingCallback;
-
 function runTranscript(uniqueRef) {
   var path = __dirname + recordingsDir + uniqueRef;
   console.log("Sending " + path+ " to watson");
@@ -50,7 +48,6 @@ function saveRecording(recordingUrl, uniqueRef) {
           runTranscript(uniqueRef);
       });
     }
-    clearInterval(recordingCallback);
   });
 }
 
@@ -59,7 +56,7 @@ app.get('/', function (req, res) {
   console.log('Received URL: ' +  req.query.recordingUrl);
   var uniqueRef = req.query.recordingUrl.split('/');
   uniqueRef = uniqueRef[uniqueRef.length-1];
-  recordingCallback = setInterval(saveRecording, 1000, req.query.recordingUrl, uniqueRef);
+  setTimeout(saveRecording, 1000, req.query.recordingUrl, uniqueRef);
 });
 
 
