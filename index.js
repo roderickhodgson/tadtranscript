@@ -6,6 +6,7 @@ var watson = require('watson-developer-cloud');
 var config = require('./config');
 
 var recordingsDir = '/recordings/';
+const MIN_CONFIDENCE = 0;
 
 function sendSms(text) {
   httpreq.post('https://api4.apidaze.io/f0c8b871/sms/send', {
@@ -84,7 +85,12 @@ function runTranscript(uniqueRef) {
     } else {
       console.log(JSON.stringify(transcript));
       var text = transcript.results.reduce(function(prev, current) {
-        return prev += current.alternatives[0].transcript;
+        if (current.alternatives[0].confidence > MIN_CONFIDENCE) {
+          return prev += current.alternatives[0].transcript;
+        }
+        else {
+          return prev;
+        }
       }, "");
       console.log(text);
       getKeywords(text);
