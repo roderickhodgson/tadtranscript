@@ -3,12 +3,10 @@ var httpreq = require('httpreq');
 var fs = require('fs');
 var app = express();
 
-app.get('/', function (req, res) {
-  res.send('Thanks for sending me the URL ' + req.query.recordingUrl);
-  console.log('Received URL: ' +  req.query.recordingUrl);
-  var uniqueRef = req.query.recordingUrl.split('/');
-  uniqueRef = uniqueRef[uniqueRef.length-1];
-  httpreq.get(req.query.recordingUrl, {binary: true}, function (err, dlres) {
+var recordingCallback;
+
+function saveRecording(recordingUrl, uniqueRef) {
+  httpreq.get(recordingUrl, {binary: true}, function (err, dlres) {
     if (err) {
       console.log(err);
     } else {
@@ -19,8 +17,18 @@ app.get('/', function (req, res) {
           console.log("stored recording at " + uniqueRef);
       });
     }
+    clearInterval(recordingCallback);
   });
+}
+
+app.get('/', function (req, res) {
+  res.send('Thanks for sending me the URL ' + req.query.recordingUrl);
+  console.log('Received URL: ' +  req.query.recordingUrl);
+  var uniqueRef = req.query.recordingUrl.split('/');
+  uniqueRef = uniqueRef[uniqueRef.length-1];
+  recordingCallback = setInterval(saveRecording, 1000, req.query.recordingUrl, uniqueRef);
 });
+
 
 app.listen(3000, function () {
   console.log('Transcription service listening on port 3000!');
