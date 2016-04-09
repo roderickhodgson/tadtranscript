@@ -1,0 +1,14 @@
+---
+- name: Deploy Transcription node.js REST API
+  hosts: tadtranscript
+  become: true
+  vars_files:
+    - vars/main.yml
+  roles:
+    - geerlingguy.nodejs
+  tasks:
+    - file: path=/home/ubuntu/transcription state=directory owner=ubuntu group=ubuntu
+    - file: path=/home/ubuntu/transcription/recordings state=directory owner=ubuntu group=ubuntu
+    - copy: src=~/Code/tadtranscript/index.js dest=/home/ubuntu/transcription/index.js owner=ubuntu group=ubuntu mode="u=r,g=r,o=r"
+    - copy: src=~/Code/tadtranscript/package.json dest=/home/ubuntu/transcription/package.json owner=ubuntu group=ubuntu mode="u=r,g=r,o=r"
+    - npm: path=/home/ubuntu/transcription
