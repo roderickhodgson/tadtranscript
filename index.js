@@ -6,13 +6,13 @@ var watson = require('watson-developer-cloud');
 var config = require('./config');
 
 var recordingsDir = '/recordings/';
-const MIN_CONFIDENCE = 0;
+const MIN_CONFIDENCE = 0.6;
 
-function sendSms(text) {
+function sendSms(text, smsNumber) {
   httpreq.post('https://api4.apidaze.io/f0c8b871/sms/send', {
     parameters: {
       api_secret: config.apidaze_key,
-      number: config.sms_number,
+      number: smsNumber,
       body: text
     }
   }, function(err, res) {
@@ -25,7 +25,7 @@ function sendSms(text) {
   });
 }
 
-function stringifyKeywords(data) {
+function stringifyKeywords(data, smsNumber) {
   var keywords = data.keywords.reduce(function(previousValue, currentValue) {
     var token = '';
     if (previousValue !== "") {
@@ -35,11 +35,11 @@ function stringifyKeywords(data) {
   }, "");
   var smsText = "You had a conversation about: " + keywords;
   console.log(smsText);
-  sendSms(smsText);
+  sendSms(smsText, smsNumber);
 }
 
 
-function getKeywords(text) {
+function getKeywords(text, smsNumber) {
   console.log("Calling keyword extractor");
   httpreq.get('http://gateway-a.watsonplatform.net/calls/text/TextGetRankedKeywords', {
     parameters: {
@@ -55,12 +55,12 @@ function getKeywords(text) {
       console.log(err);
     } else {
       console.log(res.body);
-      return stringifyKeywords(JSON.parse(res.body));
+      return stringifyKeywords(JSON.parse(res.body), smsNumber);
     }
   })
 }
 
-function runTranscript(uniqueRef) {
+function runTranscript(uniqueRef, smsNumber) {
   var path = __dirname + recordingsDir + uniqueRef;
   console.log("Sending " + path + " to watson");
 
@@ -85,7 +85,7 @@ function runTranscript(uniqueRef) {
     } else {
       console.log(JSON.stringify(transcript));
       var text = transcript.results.reduce(function(prev, current) {
-        if (current.alternatives[0].confidence > MIN_CONFIDENCE) {
+        if (parseFloat(current.alternatives[0].confidence) >= MIN_CONFIDENCE) {
           return prev += current.alternatives[0].transcript;
         }
         else {
@@ -93,12 +93,12 @@ function runTranscript(uniqueRef) {
         }
       }, "");
       console.log(text);
-      getKeywords(text);
+      getKeywords(text, smsNumber);
     }
   });
 }
 
-function saveRecording(recordingUrl, uniqueRef) {
+function saveRecording(recordingUrl, uniqueRef, smsNumber) {
   httpreq.get(recordingUrl, {
     binary: true
   }, function(err, dlres) {
@@ -110,7 +110,7 @@ function saveRecording(recordingUrl, uniqueRef) {
           console.error("error writing " + uniqueRef + " file");
         else
           console.log("stored recording at " + uniqueRef);
-        runTranscript(uniqueRef);
+        runTranscript(uniqueRef, smsNumber);
       });
     }
   });
@@ -120,8 +120,9 @@ app.get('/', function(req, res) {
   res.send('Thanks for sending me the URL ' + req.query.recordingUrl);
   console.log('Received URL: ' + req.query.recordingUrl);
   var uniqueRef = req.query.recordingUrl.split('/');
+  var smsNumber = req.query.phoneNumber;
   uniqueRef = uniqueRef[uniqueRef.length - 1];
-  setTimeout(saveRecording, 1000, req.query.recordingUrl, uniqueRef);
+  setTimeout(saveRecording, 1000, req.query.recordingUrl, uniqueRef, smsNumber);
 });
 
 
